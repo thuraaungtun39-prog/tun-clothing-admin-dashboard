@@ -656,7 +656,8 @@ const CONFIG = {
   SUPABASE_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcW55aGNsd2Rqa2lmYW9vamJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4ODUyMDEsImV4cCI6MjA5NzQ2MTIwMX0.FsGJTvpsjUv8uRdaITSpyGLgBJ-t2FW5t_nsZQadFG8',
   N8N_BASE: 'https://n8n.srv1695682.hstgr.cloud',
   SHEET_URL: 'https://docs.google.com/spreadsheets/d/1a7JYtUwJEt0CS_0Grx7VMfZrPrDRSrkXVSkpQKkwBT8/edit#gid=205452621',
-  ADMIN_TOKEN: 'uthuya_upload_2026_A8mK92xPvQ71LfZwR4'
+  ADMIN_TOKEN: 'uthuya_upload_2026_A8mK92xPvQ71LfZwR4',
+  UPLOAD_TOKEN: 'uthuya2026secret'
 };
 
 function dashboard() {
@@ -735,7 +736,7 @@ function dashboard() {
       const saved = localStorage.getItem('uthuya_authed');
       if (saved === '1') {
         this.authed = true;
-        this.uploadToken = localStorage.getItem('uthuya_upload_token') || '';
+        this.uploadToken = localStorage.getItem('uthuya_upload_token') || CONFIG.UPLOAD_TOKEN;
         this.loadReports();
       }
     },
@@ -744,7 +745,8 @@ function dashboard() {
       if (this.loginToken === CONFIG.ADMIN_TOKEN) {
         this.authed = true;
         localStorage.setItem('uthuya_authed', '1');
-        this.uploadToken = localStorage.getItem('uthuya_upload_token') || '';
+        this.uploadToken = localStorage.getItem('uthuya_upload_token') || CONFIG.UPLOAD_TOKEN;
+        localStorage.setItem('uthuya_upload_token', this.uploadToken);
         this.loadReports();
       } else {
         this.loginError = 'Token မှား';
