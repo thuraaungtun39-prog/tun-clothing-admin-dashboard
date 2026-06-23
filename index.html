@@ -952,7 +952,7 @@ function dashboard() {
       try {
         const r = await fetch(CONFIG.N8N_BASE + '/webhook/uthuya-drafts-api', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-upload-token': this.uploadToken },
           body: JSON.stringify({ action: 'list', batch_id: null })
         });
         const data = await r.json();
@@ -1014,7 +1014,7 @@ function dashboard() {
         };
         await fetch(CONFIG.N8N_BASE + '/webhook/uthuya-drafts-api', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-upload-token': this.uploadToken },
           body: JSON.stringify({ action: 'update', draft_id: d.draft_id, payload: patch, patch: patch })
         });
         d._saved = true;
@@ -1033,7 +1033,7 @@ function dashboard() {
       try {
         await fetch(CONFIG.N8N_BASE + '/webhook/uthuya-drafts-api', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-upload-token': this.uploadToken },
           body: JSON.stringify({ action: 'delete', draft_id: d.draft_id })
         });
         this.drafts = this.drafts.filter(x => x.draft_id !== d.draft_id);
@@ -1052,7 +1052,7 @@ function dashboard() {
       try {
         await fetch(CONFIG.N8N_BASE + '/webhook/uthuya-drafts-api', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-upload-token': this.uploadToken },
           body: JSON.stringify({ action: 'publish', draft_ids: ready.map(d => d.draft_id) })
         });
         this.showToast(`${ready.length} ပုံ ပြီးပါပြီ`, 'good');
