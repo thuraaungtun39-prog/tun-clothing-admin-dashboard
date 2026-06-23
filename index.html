@@ -9,8 +9,18 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/[email protected]/dist/chart.umd.min.js"></script>
+<script>
+  // Fallback if Tailwind fails to load
+  window.addEventListener('error', function(e) {
+    if (e.target && e.target.src && e.target.src.includes('tailwind')) {
+      console.error('Tailwind CDN failed, loading from unpkg fallback');
+      var s = document.createElement('script');
+      s.src = 'https://unpkg.com/@tailwindcss/[email protected]/dist/lib.global.js';
+      document.head.appendChild(s);
+    }
+  }, true);
+</script>
+<script defer src="https://unpkg.com/[email protected]/dist/cdn.min.js" onerror="this.onerror=null; var s=document.createElement('script'); s.defer=true; s.src='https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.min.js'; document.head.appendChild(s);"></script>
 <style>
   :root {
     --bg: #fafaf9;
@@ -81,9 +91,38 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+  /* Failsafe: show loading while Alpine boots */
+  .boot-loader {
+    position: fixed; inset: 0; display: flex; align-items: center;
+    justify-content: center; flex-direction: column; gap: 12px;
+    background: #fafaf9; z-index: 999;
+  }
+  .boot-loader .spinner {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 3px solid #e4e4e7; border-top-color: #d97706;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .boot-loader .label { color: #71717a; font-size: 14px; }
 </style>
 </head>
-<body x-data="dashboard()" x-init="init()" x-cloak class="min-h-screen pb-24">
+<body x-data="dashboard()" x-init="init(); document.getElementById('boot').style.display='none'" x-cloak class="min-h-screen pb-24">
+
+<!-- Boot loader (hidden when Alpine initializes) -->
+<div id="boot" class="boot-loader">
+  <div class="spinner"></div>
+  <div class="label">UThuya Admin ဖွင့်နေသည်...</div>
+</div>
+
+<!-- Failsafe: if Alpine doesn't load within 8 seconds, show error -->
+<script>
+  setTimeout(function() {
+    var boot = document.getElementById('boot');
+    if (boot && boot.style.display !== 'none') {
+      boot.innerHTML = '<div style="text-align:center;padding:20px;max-width:300px"><div style="font-size:48px">⚠️</div><div style="font-weight:bold;margin:10px 0">Script load လုပ်လို့မရပါ</div><div style="color:#71717a;font-size:13px;margin-bottom:20px">Internet connection စစ်ပါ — VPN ပြောင်းပြီး ပြန်စမ်းပါ</div><button onclick="location.reload()" style="background:#d97706;color:white;padding:10px 20px;border:none;border-radius:8px;font-weight:600">ပြန်စမ်း</button></div>';
+    }
+  }, 8000);
+</script>
 
 <!-- LOGIN GATE -->
 <div x-show="!authed" class="min-h-screen flex items-center justify-center p-6">
