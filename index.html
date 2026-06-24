@@ -924,8 +924,8 @@ function dashboard() {
       }
       const arr = Array.from(files).slice(0, 50);
       this.uploadingCount = arr.length;
-      const batchId = 'batch_' + Date.now();
       for (const f of arr) {
+        const batchId = crypto.randomUUID();
         try {
           await this.uploadOne(f, batchId);
         } catch (e) {
