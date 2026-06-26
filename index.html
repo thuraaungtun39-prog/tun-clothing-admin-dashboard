@@ -315,13 +315,22 @@
         class="w-full px-4 py-2.5 rounded-xl border bg-white text-sm mb-3"
         style="border-color: var(--line)">
 
-      <a
-        :href="sheetUrl"
-        target="_blank"
-        class="tap block w-full mb-3 py-2.5 text-center rounded-xl text-sm font-medium border"
-        style="border-color: var(--line); color: var(--muted)">
-        ✎ Sheet မှာ ပြောင်းရန် ↗
-      </a>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs shrink-0" style="color: var(--muted)">Sort</span>
+        <select
+          x-model="stockSort"
+          @change="loadStock()"
+          class="flex-1 px-3 py-2.5 rounded-xl border bg-white text-sm"
+          style="border-color: var(--line)">
+          <option value="newest">အသစ်ဆုံး (ရက်စွဲ)</option>
+          <option value="oldest">အဟောင်းဆုံး</option>
+          <option value="price_asc">ဈေး — နည်း → များ</option>
+          <option value="price_desc">ဈေး — များ → နည်း</option>
+          <option value="stock_desc">Stock — များ → နည်း</option>
+          <option value="stock_asc">Stock — နည်း → များ</option>
+          <option value="code">Item code</option>
+        </select>
+      </div>
 
       <div x-show="stockLoading" class="grid grid-cols-2 gap-3">
         <template x-for="i in 6"><div class="skeleton aspect-square rounded-xl"></div></template>
@@ -329,7 +338,7 @@
 
       <div x-show="!stockLoading" class="grid grid-cols-2 gap-3">
         <template x-for="p in stockList" :key="p.variant_id">
-          <div class="card overflow-hidden tap">
+          <div @click="openStockEdit(p)" class="card overflow-hidden tap cursor-pointer">
             <div class="aspect-square bg-zinc-100 relative">
               <img
                 x-show="p.image_urls && p.image_urls.length"
@@ -643,6 +652,49 @@
     </div>
   </div>
 
+  <!-- STOCK EDIT MODAL -->
+  <div x-show="stockModal" x-transition.opacity @click.self="stockModal=null" class="fixed inset-0 z-50 flex items-end" style="background: rgba(0,0,0,0.5)">
+    <div class="w-full max-h-[90vh] overflow-y-auto rounded-t-2xl p-5" style="background: var(--surface)" x-show="stockModal" x-transition>
+      <template x-if="stockModal">
+        <div>
+          <div class="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-4"></div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-16 h-16 rounded-xl bg-zinc-100 overflow-hidden shrink-0">
+              <img x-show="stockModal.image_urls && stockModal.image_urls.length" :src="stockModal.image_urls?.[0]" class="w-full h-full object-cover">
+            </div>
+            <div>
+              <div class="num font-bold" x-text="stockModal.item_code"></div>
+              <div class="text-xs" style="color: var(--muted)" x-text="(stockModal.category||'') + ' • ' + (stockModal.color||'—') + ' / ' + (stockModal.size||'—')"></div>
+            </div>
+          </div>
+
+          <div class="card p-3 mb-3">
+            <label class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">ဈေး (Ks)</label>
+            <input type="number" inputmode="numeric" x-model.number="stockEditPrice"
+              class="num w-full px-3 py-2.5 rounded-lg border bg-white text-lg font-bold mt-1"
+              style="border-color: var(--line)">
+          </div>
+          <div class="card p-3 mb-3">
+            <label class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">Stock အရေအတွက်</label>
+            <input type="number" inputmode="numeric" x-model.number="stockEditStock"
+              class="num w-full px-3 py-2.5 rounded-lg border bg-white text-lg font-bold mt-1"
+              style="border-color: var(--line)">
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <button @click="stockModal=null" class="tap flex-1 py-3 rounded-xl font-semibold border" style="border-color: var(--line); color: var(--muted)">
+              မလုပ်တော့
+            </button>
+            <button @click="saveStockEdit()" :disabled="stockSaving" class="tap flex-1 py-3 rounded-xl font-semibold text-white" style="background: var(--good)">
+              <span x-show="!stockSaving">✅ သိမ်း</span>
+              <span x-show="stockSaving">သိမ်းနေသည်…</span>
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div x-show="toast" x-transition class="fixed bottom-24 left-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium toast-enter"
        :style="toastColor === 'good' ? 'background: var(--good); color: white' : toastColor === 'bad' ? 'background: var(--bad); color: white' : 'background: var(--ink); color: white'"
@@ -703,7 +755,11 @@ function dashboard() {
     stockList: [],
     stockLoading: false,
     categories: [],
-    sheetUrl: CONFIG.SHEET_URL,
+    stockSort: 'newest',
+    stockModal: null,
+    stockEditPrice: 0,
+    stockEditStock: 0,
+    stockSaving: false,
 
     // upload
     uploadDate: '',
@@ -898,12 +954,36 @@ function dashboard() {
           p_category: this.stockCategory || null,
           p_search: this.stockSearch || null,
           p_limit: 60,
-          p_offset: 0
+          p_offset: 0,
+          p_sort: this.stockSort || 'newest'
         });
       } catch (e) {
         this.showToast('Stock load မရ', 'bad');
       } finally {
         this.stockLoading = false;
+      }
+    },
+    openStockEdit(p) {
+      this.stockModal = p;
+      this.stockEditPrice = Number(p.price || 0);
+      this.stockEditStock = Number(p.stock || 0);
+    },
+    async saveStockEdit() {
+      if (!this.stockModal) return;
+      this.stockSaving = true;
+      try {
+        await this.rpc('update_stock', {
+          p_variant_id: this.stockModal.variant_id,
+          p_price: Number(this.stockEditPrice),
+          p_stock: Number(this.stockEditStock)
+        });
+        this.showToast('ဈေး/Stock ပြင်ပြီးပါပြီ', 'good');
+        this.stockModal = null;
+        this.loadStock();
+      } catch (e) {
+        this.showToast('သိမ်း မရ: ' + e.message, 'bad');
+      } finally {
+        this.stockSaving = false;
       }
     },
 
