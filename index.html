@@ -457,11 +457,7 @@
                 <label class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">အမျိုးအစား</label>
                 <select x-model="bulk.category" class="w-full px-2 py-1.5 rounded border text-sm bg-white" style="border-color: var(--line)">
                   <option value="">—</option>
-                  <option value="ပါတိတ်">ပါတိတ်</option>
-                  <option value="ထဘီ">ထဘီ</option>
-                  <option value="ဝမ်းဆက်">ဝမ်းဆက်</option>
-                  <option value="အိမ်နေဝတ်စုံ">အိမ်နေဝတ်စုံ</option>
-                  <option value="အခြား">အခြား</option>
+                  <template x-for="c in CATEGORIES" :key="c"><option :value="c" x-text="c"></option></template>
                 </select>
               </div>
               <button @click="applyBulkCategory()" :disabled="!bulk.category" class="tap py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style="background: var(--ink)">ထည့်</button>
@@ -562,11 +558,7 @@
                   <label class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">အမျိုးအစား <span class="text-red-500">*</span></label>
                   <select x-model="d.category" @change="markDirty(d)" class="w-full px-2 py-1.5 rounded border text-sm bg-white" style="border-color: var(--line)">
                     <option value="">—</option>
-                    <option value="ပါတိတ်">ပါတိတ်</option>
-                    <option value="ထဘီ">ထဘီ</option>
-                    <option value="ဝမ်းဆက်">ဝမ်းဆက်</option>
-                    <option value="အိမ်နေဝတ်စုံ">အိမ်နေဝတ်စုံ</option>
-                    <option value="အခြား">အခြား</option>
+                    <template x-for="c in CATEGORIES" :key="c"><option :value="c" x-text="c"></option></template>
                   </select>
                 </div>
                 <div>
@@ -864,6 +856,7 @@ const CONFIG = {
 
 function dashboard() {
   return {
+    CATEGORIES: ['ချည်သားဝမ်းဆက်','ပွဲတက်ချိတ်','ရိုးရိုးဝမ်းဆက်','ဘလင်းဘလင်းဝမ်းဆက်','ဆွဲသားဝမ်းဆက်','ထဘီကွင်း','ထမိန်စကပ်','ပိတ်ဖောက်ဇာ','ရိုးရိုးဂါဝန်','ဘောင်းဘီ (ကျား/မ)'],
     // auth
     authed: false,
     loginToken: '',
