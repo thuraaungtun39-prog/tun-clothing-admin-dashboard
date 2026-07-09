@@ -846,7 +846,14 @@
             </button>
           </div>
 
-          <button @click="orderModal=null" class="tap w-full mt-4 py-2.5 rounded-xl border text-sm" style="border-color: var(--line)">
+          <!-- Cancel + hard delete: restocks (if still reserved) then removes the order permanently -->
+          <button @click="cancelOrder(orderModal)" :disabled="orderActionLoading"
+            class="tap w-full mt-2 py-3 rounded-xl font-semibold border disabled:opacity-50"
+            style="border-color: var(--bad); color: var(--bad); background:#fef2f2">
+            <span x-text="orderActionLoading ? '⏳ ...' : '🗑️ Order ဖျက် (Stock ပြန်ထည့်)'"></span>
+          </button>
+
+          <button @click="orderModal=null" class="tap w-full mt-2 py-2.5 rounded-xl border text-sm" style="border-color: var(--line)">
             ပိတ်
           </button>
         </div>
@@ -1207,6 +1214,23 @@ function dashboard() {
         this.loadOrders();
       } catch (e) {
         this.showToast('Reject မရ: ' + e.message, 'bad');
+      } finally {
+        this.orderActionLoading = false;
+      }
+    },
+    async cancelOrder(o) {
+      if (this.orderActionLoading) return;
+      if (!confirm('ဤ Order ကို အပြီးဖျက်မှာ သေချာသလား?\nStock ပြန်ထည့်ပြီး order ကို database မှ လုံးဝ ဖျက်ပါမည်။')) return;
+      this.orderActionLoading = true;
+      try {
+        const res = await this.rpc('cancel_order_full', { p_order_id: o.order_id, p_reason: 'Cancelled via dashboard' });
+        const r = Array.isArray(res) ? res[0] : res;
+        if (r && r.success === false) throw new Error(r.error || 'cancel_failed');
+        this.showToast(r && r.restocked ? 'ဖျက်ပြီး — Stock ပြန်ထည့်ပြီးပါပြီ' : 'ဖျက်ပြီးပါပြီ', 'warn');
+        this.orders = this.orders.filter(x => x.order_id !== o.order_id);
+        this.orderModal = null;
+      } catch (e) {
+        this.showToast('ဖျက်၍မရ: ' + e.message, 'bad');
       } finally {
         this.orderActionLoading = false;
       }
