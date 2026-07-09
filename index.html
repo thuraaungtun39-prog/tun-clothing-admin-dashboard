@@ -721,6 +721,16 @@
             <div class="num text-sm" x-text="orderModal.customer_phone || '—'"></div>
           </div>
 
+          <!-- Delivery address -->
+          <div class="card p-3 mb-3 space-y-1">
+            <div class="flex items-center justify-between">
+              <div class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">📍 ပို့ဆောင်ရန် လိပ်စာ</div>
+              <span x-show="orderDetailLoading" class="text-[10px]" style="color: var(--muted)">loading…</span>
+            </div>
+            <div class="text-sm leading-relaxed" x-text="orderModal.address || (orderDetailLoading ? '…' : 'လိပ်စာ မရှိသေးပါ')"></div>
+            <div x-show="orderModal.township" class="text-xs" style="color: var(--muted)" x-text="'မြို့နယ် — ' + (orderModal.township || '')"></div>
+          </div>
+
           <div class="card p-3 mb-3">
             <div class="text-[10px] uppercase tracking-wider mb-2" style="color: var(--muted)">ITEMS</div>
             <template x-for="it in (orderModal.items || [])">
@@ -738,29 +748,112 @@
             </div>
           </div>
 
+          <!-- Real customer screenshot (when messenger pipeline has attached slip_url) -->
           <div x-show="orderModal.slip_url" class="card p-3 mb-3">
-            <div class="text-[10px] uppercase tracking-wider mb-2" style="color: var(--muted)">SLIP</div>
-            <img :src="orderModal.slip_url" class="w-full rounded-lg" loading="lazy">
+            <div class="text-[10px] uppercase tracking-wider mb-2" style="color: var(--muted)">💬 ငွေလွှဲ Screenshot (Customer)</div>
+            <a :href="orderModal.slip_url" target="_blank" rel="noopener">
+              <img :src="orderModal.slip_url" class="w-full rounded-lg" loading="lazy">
+            </a>
             <template x-if="orderModal.slip_ocr">
               <div class="mt-2 text-xs space-y-1" style="color: var(--muted)">
                 <div>OCR — <span class="num" x-text="formatMoney(orderModal.slip_ocr.amount || 0)"></span> Ks</div>
                 <div x-show="orderModal.slip_ocr.ref">Ref: <span class="num" x-text="orderModal.slip_ocr.ref"></span></div>
+                <!-- Account match verification result -->
+                <template x-if="orderModal.slip_ocr.account_match !== undefined && orderModal.slip_ocr.account_match !== null">
+                  <div class="flex items-center gap-1 pt-1">
+                    <span>အကောင့် စစ်ဆေးမှု —</span>
+                    <span class="pill text-[10px]"
+                          :class="slipAccountMatched(orderModal.slip_ocr.account_match) ? 'pill-ok' : 'pill-warn'"
+                          x-text="slipAccountMatchLabel(orderModal.slip_ocr.account_match)"></span>
+                  </div>
+                </template>
+                <div x-show="orderModal.slip_ocr.matched_account"
+                     class="text-[11px]">ကိုက်ညီသည့် အကောင့်: <span x-text="orderModal.slip_ocr.matched_account"></span></div>
+                <template x-if="orderModal.slip_ocr.amount_match !== undefined && orderModal.slip_ocr.amount_match !== null">
+                  <div class="flex items-center gap-1">
+                    <span>ငွေပမာဏ ကိုက်ညီမှု —</span>
+                    <span class="pill text-[10px]"
+                          :class="slipAccountMatched(orderModal.slip_ocr.amount_match) ? 'pill-ok' : 'pill-warn'"
+                          x-text="slipAccountMatched(orderModal.slip_ocr.amount_match) ? 'ကိုက်ညီ' : 'မကိုက်ညီ'"></span>
+                  </div>
+                </template>
               </div>
             </template>
           </div>
 
+          <!-- DEMO placeholder: shown only when no real screenshot yet, so owner can preview layout -->
+          <div x-show="!orderModal.slip_url" class="card p-3 mb-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">💬 ငွေလွှဲ Screenshot (Customer)</div>
+              <span class="pill pill-warn text-[10px]">DEMO</span>
+            </div>
+            <div class="rounded-lg overflow-hidden" style="border:1px dashed var(--line)">
+              <svg viewBox="0 0 320 440" class="w-full" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Demo payment screenshot">
+                <rect width="320" height="440" fill="#f4f4f5"/>
+                <rect x="0" y="0" width="320" height="52" fill="#0084ff"/>
+                <circle cx="28" cy="26" r="13" fill="#ffffff" opacity="0.9"/>
+                <rect x="50" y="18" width="120" height="9" rx="4" fill="#ffffff" opacity="0.9"/>
+                <rect x="50" y="32" width="70" height="7" rx="3" fill="#ffffff" opacity="0.6"/>
+                <!-- customer bubble -->
+                <rect x="150" y="70" width="150" height="30" rx="14" fill="#0084ff"/>
+                <rect x="166" y="80" width="118" height="8" rx="4" fill="#ffffff" opacity="0.85"/>
+                <!-- payment slip image bubble -->
+                <rect x="70" y="115" width="180" height="240" rx="12" fill="#ffffff" stroke="#e4e4e7"/>
+                <rect x="86" y="132" width="148" height="26" rx="6" fill="#16a34a" opacity="0.15"/>
+                <circle cx="102" cy="145" r="9" fill="#16a34a"/>
+                <path d="M98 145 l3 3 l6 -7" stroke="#ffffff" stroke-width="2" fill="none"/>
+                <rect x="120" y="140" width="90" height="9" rx="4" fill="#16a34a"/>
+                <rect x="86" y="176" width="60" height="7" rx="3" fill="#a1a1aa"/>
+                <rect x="86" y="192" width="148" height="11" rx="4" fill="#27272a"/>
+                <rect x="86" y="216" width="60" height="7" rx="3" fill="#a1a1aa"/>
+                <rect x="86" y="230" width="120" height="9" rx="4" fill="#3f3f46"/>
+                <rect x="86" y="254" width="60" height="7" rx="3" fill="#a1a1aa"/>
+                <rect x="86" y="268" width="140" height="9" rx="4" fill="#3f3f46"/>
+                <rect x="86" y="300" width="148" height="1" fill="#e4e4e7"/>
+                <rect x="86" y="312" width="70" height="7" rx="3" fill="#a1a1aa"/>
+                <rect x="86" y="326" width="100" height="9" rx="4" fill="#3f3f46"/>
+                <text x="160" y="400" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#a1a1aa">နမူနာ ငွေလွှဲ screenshot</text>
+                <text x="160" y="420" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#c4c4c7">Customer ပို့လိုက်တဲ့ ပုံ ဒီနေရာမှာ ပေါ်ပါမည်</text>
+              </svg>
+            </div>
+            <div class="mt-2 text-xs space-y-1" style="color: var(--muted)">
+              <div>OCR — <span class="num">185,000</span> Ks (နမူနာ)</div>
+              <div>Ref: <span class="num">TXN-DEMO-0001</span></div>
+            </div>
+            <div class="mt-2 text-[11px] leading-relaxed rounded-lg p-2" style="background:#fff4ed; color:#9a3412">
+              ⓘ ဤသည် နမူနာပုံသာဖြစ်ပါသည်။ Customer messenger မှ တကယ်ပို့လာသော screenshot ကို
+              <span class="num">slip_url</span> ချိတ်ဆက်ပြီးသည်နှင့် ဒီနေရာတွင် အလိုအလျောက် ပြသပါမည်။
+            </div>
+          </div>
+
           <div x-show="orderModal.admin_note" class="card p-3 mb-3 text-sm" x-text="orderModal.admin_note"></div>
 
-          <div class="flex gap-2 mt-4" x-show="orderModal.status === 'partial_checked'">
-            <button @click="rejectOrder(orderModal)" class="tap flex-1 py-3 rounded-xl font-semibold border" style="border-color: var(--bad); color: var(--bad)">
+          <!-- Already-decided banner -->
+          <div x-show="['checked','rejected'].includes(orderModal.status)" class="text-center text-sm py-3 mt-2 rounded-xl"
+               :style="orderModal.status === 'checked' ? 'background:#ecfdf5; color:var(--good)' : 'background:#fef2f2; color:var(--bad)'">
+            <span x-text="orderModal.status === 'checked' ? '✅ ဤအော်ဒါကို အတည်ပြုပြီးပါပြီ' : '❌ ဤအော်ဒါကို ပယ်ထားပါသည်'"></span>
+          </div>
+
+          <!-- Action buttons: shown for any order not yet decided -->
+          <div class="flex gap-2 mt-4" x-show="!['checked','rejected'].includes(orderModal.status)">
+            <button @click="rejectOrder(orderModal)" :disabled="orderActionLoading"
+              class="tap flex-1 py-3 rounded-xl font-semibold border disabled:opacity-50" style="border-color: var(--bad); color: var(--bad)">
               ❌ ပယ်
             </button>
-            <button @click="approveOrder(orderModal)" class="tap flex-1 py-3 rounded-xl font-semibold text-white" style="background: var(--good)">
-              ✅ အတည်ပြု
+            <button @click="approveOrder(orderModal)" :disabled="orderActionLoading"
+              class="tap flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-50" style="background: var(--good)">
+              <span x-text="orderActionLoading ? '⏳ ...' : '✅ အတည်ပြု'"></span>
             </button>
           </div>
 
-          <button @click="orderModal=null" class="tap w-full mt-4 py-2.5 rounded-xl border text-sm" style="border-color: var(--line)">
+          <!-- Cancel + hard delete: restocks (if still reserved) then removes the order permanently -->
+          <button @click="cancelOrder(orderModal)" :disabled="orderActionLoading"
+            class="tap w-full mt-2 py-3 rounded-xl font-semibold border disabled:opacity-50"
+            style="border-color: var(--bad); color: var(--bad); background:#fef2f2">
+            <span x-text="orderActionLoading ? '⏳ ...' : '🗑️ Order ဖျက် (Stock ပြန်ထည့်)'"></span>
+          </button>
+
+          <button @click="orderModal=null" class="tap w-full mt-2 py-2.5 rounded-xl border text-sm" style="border-color: var(--line)">
             ပိတ်
           </button>
         </div>
@@ -885,6 +978,8 @@ function dashboard() {
     orders: [],
     ordersLoading: false,
     orderModal: null,
+    orderDetailLoading: false,
+    orderActionLoading: false,
     statusFilters: [
       { value: '', label: 'အကုန်', count: null },
       { value: 'partial_checked', label: 'စောင့်ဆိုင်း', count: null },
@@ -1048,6 +1143,19 @@ function dashboard() {
       }
     },
 
+    // slip account_match helpers — tolerate boolean / string / object shapes
+    // since the OCR pipeline key format is not yet frozen.
+    slipAccountMatched(v) {
+      if (v === true) return true;
+      if (typeof v === 'string') return ['true','matched','match','yes','ok'].includes(v.toLowerCase());
+      if (v && typeof v === 'object') return v.matched === true || v.match === true;
+      return false;
+    },
+    slipAccountMatchLabel(v) {
+      if (v && typeof v === 'object' && v.label) return v.label;
+      return this.slipAccountMatched(v) ? 'ကိုက်ညီ ✓' : 'မကိုက်ညီ ✗';
+    },
+
     // orders
     async loadOrders() {
       this.ordersLoading = true;
@@ -1065,10 +1173,25 @@ function dashboard() {
         this.ordersLoading = false;
       }
     },
-    openOrder(o) {
+    async openOrder(o) {
+      // Show immediately with list data, then enrich with full detail (address, township, slip).
       this.orderModal = o;
+      this.orderDetailLoading = true;
+      try {
+        const full = await this.rpc('get_order_for_admin', { p_order_id: o.order_id });
+        const detail = Array.isArray(full) ? full[0] : full;
+        if (detail && !detail.error) {
+          this.orderModal = { ...o, ...detail };
+        }
+      } catch (e) {
+        this.showToast('Order အသေးစိတ် load မရ', 'bad');
+      } finally {
+        this.orderDetailLoading = false;
+      }
     },
     async approveOrder(o) {
+      if (this.orderActionLoading) return;
+      this.orderActionLoading = true;
       try {
         await this.rpc('confirm_order_by_admin', { p_order_id: o.order_id, p_admin_note: 'Approved via dashboard' });
         this.showToast('အတည်ပြုပြီးပါပြီ', 'good');
@@ -1076,10 +1199,14 @@ function dashboard() {
         this.loadOrders();
       } catch (e) {
         this.showToast('Approve မရ: ' + e.message, 'bad');
+      } finally {
+        this.orderActionLoading = false;
       }
     },
     async rejectOrder(o) {
+      if (this.orderActionLoading) return;
       if (!confirm('ပယ်မှာ သေချာသလား?')) return;
+      this.orderActionLoading = true;
       try {
         await this.rpc('reject_order_by_admin', { p_order_id: o.order_id, p_admin_note: 'Rejected via dashboard' });
         this.showToast('ပယ်လိုက်ပါပြီ', 'warn');
@@ -1087,6 +1214,25 @@ function dashboard() {
         this.loadOrders();
       } catch (e) {
         this.showToast('Reject မရ: ' + e.message, 'bad');
+      } finally {
+        this.orderActionLoading = false;
+      }
+    },
+    async cancelOrder(o) {
+      if (this.orderActionLoading) return;
+      if (!confirm('ဤ Order ကို အပြီးဖျက်မှာ သေချာသလား?\nStock ပြန်ထည့်ပြီး order ကို database မှ လုံးဝ ဖျက်ပါမည်။')) return;
+      this.orderActionLoading = true;
+      try {
+        const res = await this.rpc('cancel_order_full', { p_order_id: o.order_id, p_reason: 'Cancelled via dashboard' });
+        const r = Array.isArray(res) ? res[0] : res;
+        if (r && r.success === false) throw new Error(r.error || 'cancel_failed');
+        this.showToast(r && r.restocked ? 'ဖျက်ပြီး — Stock ပြန်ထည့်ပြီးပါပြီ' : 'ဖျက်ပြီးပါပြီ', 'warn');
+        this.orders = this.orders.filter(x => x.order_id !== o.order_id);
+        this.orderModal = null;
+      } catch (e) {
+        this.showToast('ဖျက်၍မရ: ' + e.message, 'bad');
+      } finally {
+        this.orderActionLoading = false;
       }
     },
 
@@ -1370,3 +1516,5 @@ function dashboard() {
 
 </body>
 </html>
+
+<!-- redeploy trigger 1783594909 -->
