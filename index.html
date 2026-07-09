@@ -758,6 +758,25 @@
               <div class="mt-2 text-xs space-y-1" style="color: var(--muted)">
                 <div>OCR — <span class="num" x-text="formatMoney(orderModal.slip_ocr.amount || 0)"></span> Ks</div>
                 <div x-show="orderModal.slip_ocr.ref">Ref: <span class="num" x-text="orderModal.slip_ocr.ref"></span></div>
+                <!-- Account match verification result -->
+                <template x-if="orderModal.slip_ocr.account_match !== undefined && orderModal.slip_ocr.account_match !== null">
+                  <div class="flex items-center gap-1 pt-1">
+                    <span>အကောင့် စစ်ဆေးမှု —</span>
+                    <span class="pill text-[10px]"
+                          :class="slipAccountMatched(orderModal.slip_ocr.account_match) ? 'pill-ok' : 'pill-warn'"
+                          x-text="slipAccountMatchLabel(orderModal.slip_ocr.account_match)"></span>
+                  </div>
+                </template>
+                <div x-show="orderModal.slip_ocr.matched_account"
+                     class="text-[11px]">ကိုက်ညီသည့် အကောင့်: <span x-text="orderModal.slip_ocr.matched_account"></span></div>
+                <template x-if="orderModal.slip_ocr.amount_match !== undefined && orderModal.slip_ocr.amount_match !== null">
+                  <div class="flex items-center gap-1">
+                    <span>ငွေပမာဏ ကိုက်ညီမှု —</span>
+                    <span class="pill text-[10px]"
+                          :class="slipAccountMatched(orderModal.slip_ocr.amount_match) ? 'pill-ok' : 'pill-warn'"
+                          x-text="slipAccountMatched(orderModal.slip_ocr.amount_match) ? 'ကိုက်ညီ' : 'မကိုက်ညီ'"></span>
+                  </div>
+                </template>
               </div>
             </template>
           </div>
@@ -1115,6 +1134,19 @@ function dashboard() {
       } catch (e) {
         this.showToast('Load မရ: ' + e.message, 'bad');
       }
+    },
+
+    // slip account_match helpers — tolerate boolean / string / object shapes
+    // since the OCR pipeline key format is not yet frozen.
+    slipAccountMatched(v) {
+      if (v === true) return true;
+      if (typeof v === 'string') return ['true','matched','match','yes','ok'].includes(v.toLowerCase());
+      if (v && typeof v === 'object') return v.matched === true || v.match === true;
+      return false;
+    },
+    slipAccountMatchLabel(v) {
+      if (v && typeof v === 'object' && v.label) return v.label;
+      return this.slipAccountMatched(v) ? 'ကိုက်ညီ ✓' : 'မကိုက်ညီ ✗';
     },
 
     // orders
