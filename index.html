@@ -721,6 +721,16 @@
             <div class="num text-sm" x-text="orderModal.customer_phone || '—'"></div>
           </div>
 
+          <!-- Delivery address -->
+          <div class="card p-3 mb-3 space-y-1">
+            <div class="flex items-center justify-between">
+              <div class="text-[10px] uppercase tracking-wider" style="color: var(--muted)">📍 ပို့ဆောင်ရန် လိပ်စာ</div>
+              <span x-show="orderDetailLoading" class="text-[10px]" style="color: var(--muted)">loading…</span>
+            </div>
+            <div class="text-sm leading-relaxed" x-text="orderModal.address || (orderDetailLoading ? '…' : 'လိပ်စာ မရှိသေးပါ')"></div>
+            <div x-show="orderModal.township" class="text-xs" style="color: var(--muted)" x-text="'မြို့နယ် — ' + (orderModal.township || '')"></div>
+          </div>
+
           <div class="card p-3 mb-3">
             <div class="text-[10px] uppercase tracking-wider mb-2" style="color: var(--muted)">ITEMS</div>
             <template x-for="it in (orderModal.items || [])">
@@ -739,8 +749,10 @@
           </div>
 
           <div x-show="orderModal.slip_url" class="card p-3 mb-3">
-            <div class="text-[10px] uppercase tracking-wider mb-2" style="color: var(--muted)">SLIP</div>
-            <img :src="orderModal.slip_url" class="w-full rounded-lg" loading="lazy">
+            <div class="text-[10px] uppercase tracking-wider mb-2" style="color: var(--muted)">💬 ငွေလွှဲ Screenshot (Customer)</div>
+            <a :href="orderModal.slip_url" target="_blank" rel="noopener">
+              <img :src="orderModal.slip_url" class="w-full rounded-lg" loading="lazy">
+            </a>
             <template x-if="orderModal.slip_ocr">
               <div class="mt-2 text-xs space-y-1" style="color: var(--muted)">
                 <div>OCR — <span class="num" x-text="formatMoney(orderModal.slip_ocr.amount || 0)"></span> Ks</div>
@@ -751,12 +763,21 @@
 
           <div x-show="orderModal.admin_note" class="card p-3 mb-3 text-sm" x-text="orderModal.admin_note"></div>
 
-          <div class="flex gap-2 mt-4" x-show="orderModal.status === 'partial_checked'">
-            <button @click="rejectOrder(orderModal)" class="tap flex-1 py-3 rounded-xl font-semibold border" style="border-color: var(--bad); color: var(--bad)">
+          <!-- Already-decided banner -->
+          <div x-show="['checked','rejected'].includes(orderModal.status)" class="text-center text-sm py-3 mt-2 rounded-xl"
+               :style="orderModal.status === 'checked' ? 'background:#ecfdf5; color:var(--good)' : 'background:#fef2f2; color:var(--bad)'">
+            <span x-text="orderModal.status === 'checked' ? '✅ ဤအော်ဒါကို အတည်ပြုပြီးပါပြီ' : '❌ ဤအော်ဒါကို ပယ်ထားပါသည်'"></span>
+          </div>
+
+          <!-- Action buttons: shown for any order not yet decided -->
+          <div class="flex gap-2 mt-4" x-show="!['checked','rejected'].includes(orderModal.status)">
+            <button @click="rejectOrder(orderModal)" :disabled="orderActionLoading"
+              class="tap flex-1 py-3 rounded-xl font-semibold border disabled:opacity-50" style="border-color: var(--bad); color: var(--bad)">
               ❌ ပယ်
             </button>
-            <button @click="approveOrder(orderModal)" class="tap flex-1 py-3 rounded-xl font-semibold text-white" style="background: var(--good)">
-              ✅ အတည်ပြု
+            <button @click="approveOrder(orderModal)" :disabled="orderActionLoading"
+              class="tap flex-1 py-3 rounded-xl font-semibold text-white disabled:opacity-50" style="background: var(--good)">
+              <span x-text="orderActionLoading ? '⏳ ...' : '✅ အတည်ပြု'"></span>
             </button>
           </div>
 
@@ -885,6 +906,8 @@ function dashboard() {
     orders: [],
     ordersLoading: false,
     orderModal: null,
+    orderDetailLoading: false,
+    orderActionLoading: false,
     statusFilters: [
       { value: '', label: 'အကုန်', count: null },
       { value: 'partial_checked', label: 'စောင့်ဆိုင်း', count: null },
@@ -1065,10 +1088,25 @@ function dashboard() {
         this.ordersLoading = false;
       }
     },
-    openOrder(o) {
+    async openOrder(o) {
+      // Show immediately with list data, then enrich with full detail (address, township, slip).
       this.orderModal = o;
+      this.orderDetailLoading = true;
+      try {
+        const full = await this.rpc('get_order_for_admin', { p_order_id: o.order_id });
+        const detail = Array.isArray(full) ? full[0] : full;
+        if (detail && !detail.error) {
+          this.orderModal = { ...o, ...detail };
+        }
+      } catch (e) {
+        this.showToast('Order အသေးစိတ် load မရ', 'bad');
+      } finally {
+        this.orderDetailLoading = false;
+      }
     },
     async approveOrder(o) {
+      if (this.orderActionLoading) return;
+      this.orderActionLoading = true;
       try {
         await this.rpc('confirm_order_by_admin', { p_order_id: o.order_id, p_admin_note: 'Approved via dashboard' });
         this.showToast('အတည်ပြုပြီးပါပြီ', 'good');
@@ -1076,10 +1114,14 @@ function dashboard() {
         this.loadOrders();
       } catch (e) {
         this.showToast('Approve မရ: ' + e.message, 'bad');
+      } finally {
+        this.orderActionLoading = false;
       }
     },
     async rejectOrder(o) {
+      if (this.orderActionLoading) return;
       if (!confirm('ပယ်မှာ သေချာသလား?')) return;
+      this.orderActionLoading = true;
       try {
         await this.rpc('reject_order_by_admin', { p_order_id: o.order_id, p_admin_note: 'Rejected via dashboard' });
         this.showToast('ပယ်လိုက်ပါပြီ', 'warn');
@@ -1087,6 +1129,8 @@ function dashboard() {
         this.loadOrders();
       } catch (e) {
         this.showToast('Reject မရ: ' + e.message, 'bad');
+      } finally {
+        this.orderActionLoading = false;
       }
     },
 
