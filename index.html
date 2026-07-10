@@ -925,6 +925,10 @@
               <span x-show="stockSaving">သိမ်းနေသည်…</span>
             </button>
           </div>
+          <button @click="confirmDeleteStock()" :disabled="stockSaving || stockDeleting" class="tap w-full py-3 rounded-xl font-semibold mt-2 border" style="border-color: var(--bad); color: var(--bad)">
+            <span x-show="!stockDeleting">🗑️ ပစ္စည်း ဖျက်ပါ</span>
+            <span x-show="stockDeleting">ဖျက်နေသည်…</span>
+          </button>
         </div>
       </template>
     </div>
@@ -995,6 +999,7 @@ function dashboard() {
     categories: [],
     stockSort: 'newest',
     stockModal: null,
+    stockDeleting: false,
     stockEditPrice: 0,
     stockEditStock: 0,
     stockEditPromo: false,
@@ -1284,6 +1289,26 @@ function dashboard() {
         this.showToast('သိမ်း မရ: ' + e.message, 'bad');
       } finally {
         this.stockSaving = false;
+      }
+    },
+    async confirmDeleteStock() {
+      if (!this.stockModal) return;
+      const code = this.stockModal.item_code || this.stockModal.variant_id;
+      if (!confirm(`"${code}" ကို database မှ အပြီးဖျက်မှာ သေချာသလား?\nဤလုပ်ဆောင်ချက်ကို ပြန်ဖျက်၍ မရပါ။`)) return;
+      this.stockDeleting = true;
+      try {
+        const res = await this.rpc('delete_stock_variant', {
+          p_variant_id: this.stockModal.variant_id
+        });
+        const ok = Array.isArray(res) ? res[0]?.deleted : res?.deleted;
+        if (!ok) throw new Error('Variant မတွေ့ပါ');
+        this.showToast('ပစ္စည်း ဖျက်ပြီးပါပြီ', 'good');
+        this.stockModal = null;
+        this.loadStock();
+      } catch (e) {
+        this.showToast('ဖျက်မရ: ' + e.message, 'bad');
+      } finally {
+        this.stockDeleting = false;
       }
     },
 
