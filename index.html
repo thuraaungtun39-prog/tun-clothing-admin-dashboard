@@ -284,7 +284,16 @@
 
     <!-- ============ STOCK ============ -->
     <section x-show="tab === 'stock'">
-      <h2 class="text-xl font-bold mb-3">စတော့</h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-bold">စတော့</h2>
+        <button
+          @click="toggleStockSelectMode()"
+          class="tap px-3 py-1.5 rounded-full text-xs font-semibold border"
+          :class="stockSelectMode ? 'text-white' : ''"
+          :style="stockSelectMode ? 'background: var(--ink); border-color: var(--ink)' : 'border-color: var(--line); color: var(--muted)'">
+          <span x-text="stockSelectMode ? '✕ ပယ်ဖျက်' : '☑️ ရွေး'"></span>
+        </button>
+      </div>
 
       <!-- Category chips -->
       <div class="flex gap-2 mb-3 overflow-x-auto scrollx">
@@ -338,7 +347,10 @@
 
       <div x-show="!stockLoading" class="grid grid-cols-2 gap-3">
         <template x-for="p in stockList" :key="p.variant_id">
-          <div @click="openStockEdit(p)" class="card overflow-hidden tap cursor-pointer">
+          <div
+            @click="stockSelectMode ? toggleStockSelect(p.variant_id) : openStockEdit(p)"
+            class="card overflow-hidden tap cursor-pointer"
+            :style="stockSelectMode && stockSelected.includes(p.variant_id) ? 'outline: 2.5px solid var(--bad); outline-offset: -2px' : ''">
             <div class="aspect-square bg-zinc-100 relative">
               <img
                 x-show="p.image_urls && p.image_urls.length"
@@ -347,6 +359,10 @@
                 loading="lazy"
                 @error="$el.style.display='none'">
               <div x-show="!p.image_urls || !p.image_urls.length" class="absolute inset-0 flex items-center justify-center text-3xl" style="color: var(--line)">👕</div>
+              <div x-show="stockSelectMode" class="absolute top-2 left-2 w-6 h-6 rounded-md flex items-center justify-center text-sm font-bold border-2 shadow"
+                   :style="stockSelected.includes(p.variant_id) ? 'background: var(--bad); border-color: var(--bad); color: white' : 'background: rgba(255,255,255,0.9); border-color: var(--line)'">
+                <span x-show="stockSelected.includes(p.variant_id)">✓</span>
+              </div>
               <span class="absolute top-2 right-2 pill" :class="p.stock > 0 ? 'pill-good' : 'pill-bad'" x-text="p.stock > 0 ? `${p.stock}` : 'OOS'"></span>
               <span x-show="p.is_promotion" class="absolute top-2 left-2 pill text-[9px] text-white" style="background: var(--accent)">🏷️ Promo</span>
             </div>
@@ -361,6 +377,27 @@
         <div x-show="!stockList.length" class="col-span-2 text-center py-12" style="color: var(--muted)">
           ပစ္စည်း မရှိသေးပါ
         </div>
+      </div>
+
+      <!-- Bulk action bar -->
+      <div x-show="stockSelectMode" x-transition
+           class="fixed bottom-0 left-0 right-0 z-40 border-t px-4 py-3 flex items-center gap-3"
+           style="background: var(--surface); border-color: var(--line); box-shadow: 0 -4px 12px rgba(0,0,0,0.08)">
+        <button @click="toggleStockSelectAll()"
+                class="tap px-3 py-2.5 rounded-xl text-xs font-semibold border shrink-0"
+                style="border-color: var(--line); color: var(--muted)">
+          <span x-text="stockSelected.length === stockList.length && stockList.length ? 'ရွေးမှု ဖြုတ်' : 'အားလုံး ရွေး'"></span>
+        </button>
+        <div class="flex-1 text-sm font-semibold text-center">
+          <span class="num" x-text="stockSelected.length"></span> ခု ရွေးထားသည်
+        </div>
+        <button @click="bulkDeleteStock()"
+                :disabled="!stockSelected.length || stockBulkDeleting"
+                class="tap px-4 py-2.5 rounded-xl text-sm font-semibold text-white shrink-0 disabled:opacity-40"
+                style="background: var(--bad)">
+          <span x-show="!stockBulkDeleting" x-text="`🗑️ ဖျက် (${stockSelected.length})`"></span>
+          <span x-show="stockBulkDeleting">ဖျက်နေသည်…</span>
+        </button>
       </div>
     </section>
 
@@ -1000,6 +1037,9 @@ function dashboard() {
     stockSort: 'newest',
     stockModal: null,
     stockDeleting: false,
+    stockSelectMode: false,
+    stockSelected: [],
+    stockBulkDeleting: false,
     stockEditPrice: 0,
     stockEditStock: 0,
     stockEditPromo: false,
@@ -1310,6 +1350,49 @@ function dashboard() {
       } finally {
         this.stockDeleting = false;
       }
+    },
+
+    // bulk delete
+    toggleStockSelectMode() {
+      this.stockSelectMode = !this.stockSelectMode;
+      this.stockSelected = [];
+    },
+    toggleStockSelect(variantId) {
+      const i = this.stockSelected.indexOf(variantId);
+      if (i === -1) this.stockSelected.push(variantId);
+      else this.stockSelected.splice(i, 1);
+    },
+    toggleStockSelectAll() {
+      if (this.stockSelected.length === this.stockList.length) {
+        this.stockSelected = [];
+      } else {
+        this.stockSelected = this.stockList.map(p => p.variant_id);
+      }
+    },
+    async bulkDeleteStock() {
+      if (!this.stockSelected.length) return;
+      const n = this.stockSelected.length;
+      if (!confirm(`ရွေးထားသော ပစ္စည်း ${n} ခုကို database မှ အပြီးဖျက်မှာ သေချာသလား?\nဤလုပ်ဆောင်ချက်ကို ပြန်ဖျက်၍ မရပါ။`)) return;
+      this.stockBulkDeleting = true;
+      const ids = [...this.stockSelected];
+      let ok = 0, fail = 0;
+      for (const variantId of ids) {
+        try {
+          const res = await this.rpc('delete_stock_variant', { p_variant_id: variantId });
+          const deleted = Array.isArray(res) ? res[0]?.deleted : res?.deleted;
+          if (deleted) { ok++; this.stockSelected = this.stockSelected.filter(x => x !== variantId); }
+          else fail++;
+        } catch (e) { fail++; }
+      }
+      this.stockBulkDeleting = false;
+      if (fail === 0) {
+        this.showToast(`ပစ္စည်း ${ok} ခု ဖျက်ပြီးပါပြီ`, 'good');
+        this.stockSelectMode = false;
+        this.stockSelected = [];
+      } else {
+        this.showToast(`${ok} ခု ဖျက်ပြီး၊ ${fail} ခု မအောင်မြင်ပါ`, 'bad');
+      }
+      this.loadStock();
     },
 
     // upload
