@@ -865,6 +865,16 @@
 
           <div x-show="orderModal.admin_note" class="card p-3 mb-3 text-sm" x-text="orderModal.admin_note"></div>
 
+          <!-- Stock reservation status: makes clear whether reject/cancel will restock -->
+          <div x-show="orderModal.status === 'pending_payment'" class="text-[11px] leading-relaxed rounded-lg p-2 mt-2 mb-1"
+               style="background:#f1f5f9; color:#475569">
+            ⓘ ဤအော်ဒါသည် ငွေလွှဲ slip မတင်ရသေးပါ။ Stock ကို မဆွဲထားသေးသဖြင့် ပယ်/ဖျက်လျှင် stock ပြန်ထည့်စရာ မလိုပါ။
+          </div>
+          <div x-show="['partial_checked','checked'].includes(orderModal.status)" class="text-[11px] leading-relaxed rounded-lg p-2 mt-2 mb-1"
+               style="background:#fff4ed; color:#9a3412">
+            ⓘ ဤအော်ဒါအတွက် Stock ကို ဆွဲထားပြီးဖြစ်သည်။ ပယ်/ဖျက်လျှင် stock ကို အလိုအလျောက် ပြန်ထည့်ပေးပါမည်။
+          </div>
+
           <!-- Already-decided banner -->
           <div x-show="['checked','rejected'].includes(orderModal.status)" class="text-center text-sm py-3 mt-2 rounded-xl"
                :style="orderModal.status === 'checked' ? 'background:#ecfdf5; color:var(--good)' : 'background:#fef2f2; color:var(--bad)'">
@@ -887,7 +897,7 @@
           <button @click="cancelOrder(orderModal)" :disabled="orderActionLoading"
             class="tap w-full mt-2 py-3 rounded-xl font-semibold border disabled:opacity-50"
             style="border-color: var(--bad); color: var(--bad); background:#fef2f2">
-            <span x-text="orderActionLoading ? '⏳ ...' : '🗑️ Order ဖျက် (Stock ပြန်ထည့်)'"></span>
+            <span x-text="orderActionLoading ? '⏳ ...' : (['partial_checked','checked'].includes(orderModal.status) ? '🗑️ Order ဖျက် (Stock ပြန်ထည့်)' : '🗑️ Order ဖျက်')"></span>
           </button>
 
           <button @click="orderModal=null" class="tap w-full mt-2 py-2.5 rounded-xl border text-sm" style="border-color: var(--line)">
@@ -1138,10 +1148,10 @@ function dashboard() {
       return Math.max(2, (Number(rev || 0) / max) * 100);
     },
     statusLabel(s) {
-      return { pending_slip: 'Slip စောင့်', partial_checked: 'စောင့်ဆိုင်း', checked: 'အတည်ပြုပြီး', rejected: 'ပယ်' }[s] || s;
+      return { pending_payment: 'ငွေစောင့်', partial_checked: 'စောင့်ဆိုင်း', checked: 'အတည်ပြုပြီး', rejected: 'ပယ်', cancelled: 'ဖျက်ပြီး' }[s] || s;
     },
     statusPill(s) {
-      return { pending_slip: 'pill-muted', partial_checked: 'pill-warn', checked: 'pill-good', rejected: 'pill-bad' }[s] || 'pill-muted';
+      return { pending_payment: 'pill-muted', partial_checked: 'pill-warn', checked: 'pill-good', rejected: 'pill-bad', cancelled: 'pill-bad' }[s] || 'pill-muted';
     },
     showToast(msg, color = 'ink') {
       this.toast = msg;
