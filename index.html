@@ -1123,7 +1123,9 @@ function dashboard() {
       const saved = localStorage.getItem('uthuya_authed');
       if (saved === '1') {
         this.authed = true;
-        this.uploadToken = localStorage.getItem('uthuya_upload_token') || CONFIG.UPLOAD_TOKEN;
+        // Always use the config token; drop any stale stored token to avoid 401 mismatches
+        localStorage.removeItem('uthuya_upload_token');
+        this.uploadToken = CONFIG.UPLOAD_TOKEN;
         this.loadReports();
       }
     },
@@ -1132,8 +1134,9 @@ function dashboard() {
       if (this.loginToken === CONFIG.ADMIN_TOKEN) {
         this.authed = true;
         localStorage.setItem('uthuya_authed', '1');
-        this.uploadToken = localStorage.getItem('uthuya_upload_token') || CONFIG.UPLOAD_TOKEN;
-        localStorage.setItem('uthuya_upload_token', this.uploadToken);
+        // Always use the config token; drop any stale stored token to avoid 401 mismatches
+        localStorage.removeItem('uthuya_upload_token');
+        this.uploadToken = CONFIG.UPLOAD_TOKEN;
         this.loadReports();
       } else {
         this.loginError = 'Token မှား';
@@ -1465,8 +1468,8 @@ function dashboard() {
 
     // upload
     saveUploadToken() {
-      this.uploadToken = this.uploadTokenInput.trim();
-      localStorage.setItem('uthuya_upload_token', this.uploadToken);
+      // Session-only override; not persisted, so a stale token can never linger across reloads
+      this.uploadToken = this.uploadTokenInput.trim() || CONFIG.UPLOAD_TOKEN;
       this.uploadTokenInput = '';
     },
     handleDrop(e) {
