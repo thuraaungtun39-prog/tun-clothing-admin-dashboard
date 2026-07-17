@@ -941,17 +941,16 @@
   <!-- STOCK EDIT MODAL -->
   <div x-show="stockModal" x-transition.opacity @click.self="stockModal=null" class="fixed inset-0 z-50 flex items-end" style="background: rgba(0,0,0,0.5)">
     <div class="w-full max-h-[90vh] overflow-y-auto rounded-t-2xl p-5" style="background: var(--surface)" x-show="stockModal" x-transition>
-      <template x-if="stockModal">
-        <div>
+      <div x-show="stockModal">
           <div class="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-4"></div>
           <div class="flex items-center gap-3 mb-4">
             <div class="w-16 h-16 rounded-xl bg-zinc-100 overflow-hidden shrink-0">
-              <img x-show="stockModal.image_urls && stockModal.image_urls.length" :src="stockModal.image_urls?.[0]" class="w-full h-full object-cover">
+              <img x-show="stockModal?.image_urls && stockModal.image_urls.length" :src="stockModal?.image_urls?.[0]" class="w-full h-full object-cover">
             </div>
             <div>
-              <div class="num font-bold" x-text="stockModal.item_code"></div>
-              <div x-show="stockModal.sku" class="num text-[10px]" style="color: var(--muted)" x-text="'SKU ' + stockModal.sku"></div>
-              <div class="text-xs" style="color: var(--muted)" x-text="(stockModal.category||'') + ' • ' + (stockModal.color||'—') + ' / ' + (stockModal.size||'—')"></div>
+              <div class="num font-bold" x-text="stockModal?.item_code"></div>
+              <div x-show="stockModal?.sku" class="num text-[10px]" style="color: var(--muted)" x-text="'SKU ' + stockModal?.sku"></div>
+              <div class="text-xs" style="color: var(--muted)" x-text="(stockModal?.category||'') + ' • ' + (stockModal?.color||'—') + ' / ' + (stockModal?.size||'—')"></div>
             </div>
           </div>
 
@@ -1007,8 +1006,7 @@
             <span x-show="!stockDeleting">🗑️ ပစ္စည်း ဖျက်ပါ</span>
             <span x-show="stockDeleting">ဖျက်နေသည်…</span>
           </button>
-        </div>
-      </template>
+      </div>
     </div>
   </div>
 
