@@ -320,7 +320,7 @@
         type="search"
         x-model="stockSearch"
         @input.debounce.400="loadStock()"
-        placeholder="Item code / အရောင်"
+        placeholder="Item code / SKU / အရောင်"
         class="w-full px-4 py-2.5 rounded-xl border bg-white text-sm mb-3"
         style="border-color: var(--line)">
 
@@ -368,6 +368,7 @@
             </div>
             <div class="p-3">
               <div class="num text-xs font-bold" x-text="p.item_code"></div>
+              <div x-show="p.sku" class="num text-[10px] mt-0.5" style="color: var(--muted)" x-text="'SKU ' + p.sku"></div>
               <div class="text-xs mt-0.5" style="color: var(--muted)" x-text="(p.color || '—') + ' • ' + (p.size || '—')"></div>
               <div class="num text-sm font-bold mt-1" x-text="formatMoney(p.price) + ' Ks'"></div>
             </div>
@@ -783,6 +784,18 @@
               <span>စုစုပေါင်း</span>
               <span class="num" x-text="formatMoney(orderModal.grand_total) + ' Ks'"></span>
             </div>
+            <template x-if="Number(orderModal.deposit_amount || 0) > 0">
+              <div class="mt-2 pt-2 border-t space-y-1" style="border-color: var(--line)">
+                <div class="flex justify-between text-xs">
+                  <span style="color: var(--muted)">💵 ကြိုတင်စရံ (COD)</span>
+                  <span class="num font-semibold" x-text="formatMoney(orderModal.deposit_amount) + ' Ks'"></span>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span style="color: var(--muted)">🚚 Deli ပေးရန် ကျန်ငွေ</span>
+                  <span class="num font-semibold" x-text="formatMoney(orderModal.cod_remaining) + ' Ks'"></span>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- Real customer screenshot (when messenger pipeline has attached slip_url) -->
@@ -900,6 +913,23 @@
             <span x-text="orderActionLoading ? '⏳ ...' : (['partial_checked','checked'].includes(orderModal.status) ? '🗑️ Order ဖျက် (Stock ပြန်ထည့်)' : '🗑️ Order ဖျက်')"></span>
           </button>
 
+          <!-- Agent pause toggle: silences the AI agent for THIS customer (human takeover) -->
+          <div x-show="orderModal.messenger_psid" class="card p-3 mt-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-semibold" x-text="agentPaused ? '🔇 Agent ရပ်ထားသည်' : '🔊 Agent အလုပ်လုပ်နေသည်'"></div>
+                <div class="text-[11px] mt-0.5" style="color: var(--muted)"
+                     x-text="agentPaused ? 'ဤcustomer ကို လူကိုယ်တိုင် ဖြေနေသည်။ AI က စာ မပြန်ပါ။' : 'AI agent က ဤcustomer ကို အလိုအလျောက် ဖြေနေသည်။'"></div>
+              </div>
+              <button @click="toggleAgentPause()" :disabled="pauseLoading"
+                class="tap shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                :style="agentPaused ? 'background: var(--good)' : 'background: var(--ink)'">
+                <span x-show="!pauseLoading" x-text="agentPaused ? '▶️ Agent ပြန်ဖွင့်' : '⏸️ Agent ရပ်'"></span>
+                <span x-show="pauseLoading">⏳ ...</span>
+              </button>
+            </div>
+          </div>
+
           <button @click="orderModal=null" class="tap w-full mt-2 py-2.5 rounded-xl border text-sm" style="border-color: var(--line)">
             ပိတ်
           </button>
@@ -920,6 +950,7 @@
             </div>
             <div>
               <div class="num font-bold" x-text="stockModal.item_code"></div>
+              <div x-show="stockModal.sku" class="num text-[10px]" style="color: var(--muted)" x-text="'SKU ' + stockModal.sku"></div>
               <div class="text-xs" style="color: var(--muted)" x-text="(stockModal.category||'') + ' • ' + (stockModal.color||'—') + ' / ' + (stockModal.size||'—')"></div>
             </div>
           </div>
@@ -1028,6 +1059,8 @@ function dashboard() {
     orderSearch: '',
     orders: [],
     ordersLoading: false,
+    agentPaused: false,
+    pauseLoading: false,
     orderModal: null,
     orderDetailLoading: false,
     orderActionLoading: false,
@@ -1232,16 +1265,41 @@ function dashboard() {
       // Show immediately with list data, then enrich with full detail (address, township, slip).
       this.orderModal = o;
       this.orderDetailLoading = true;
+      this.agentPaused = false;
       try {
         const full = await this.rpc('get_order_for_admin', { p_order_id: o.order_id });
         const detail = Array.isArray(full) ? full[0] : full;
         if (detail && !detail.error) {
           this.orderModal = { ...o, ...detail };
         }
+        // Load current agent-pause state for this customer (customer-level, not order-level).
+        const psid = this.orderModal.messenger_psid;
+        if (psid) {
+          try {
+            const paused = await this.rpc('is_agent_paused', { p_psid: psid });
+            this.agentPaused = (Array.isArray(paused) ? paused[0] : paused) === true;
+          } catch (_) { /* non-fatal */ }
+        }
       } catch (e) {
         this.showToast('Order အသေးစိတ် load မရ', 'bad');
       } finally {
         this.orderDetailLoading = false;
+      }
+    },
+    async toggleAgentPause() {
+      if (this.pauseLoading) return;
+      const psid = this.orderModal && this.orderModal.messenger_psid;
+      if (!psid) { this.showToast('Customer PSID မရှိ', 'bad'); return; }
+      const next = !this.agentPaused;
+      this.pauseLoading = true;
+      try {
+        await this.rpc('set_agent_pause', { p_psid: psid, p_paused: next, p_by: 'dashboard' });
+        this.agentPaused = next;
+        this.showToast(next ? 'Agent ရပ်လိုက်ပါပြီ' : 'Agent ပြန်ဖွင့်ပြီးပါပြီ', next ? 'warn' : 'good');
+      } catch (e) {
+        this.showToast('Pause ပြောင်း၍မရ: ' + e.message, 'bad');
+      } finally {
+        this.pauseLoading = false;
       }
     },
     async approveOrder(o) {
