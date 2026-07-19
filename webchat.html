@@ -260,7 +260,7 @@
    ═══════════════════════════════════════════════════════════════ */
 const CONFIG = {
   // false = mock flow (backend မပြီးသေး) ; true = real n8n webhook
-  USE_REAL_BACKEND: false,
+  USE_REAL_BACKEND: true,
   // Phase W1 ပြီးရင် အောက်က placeholder ကို real URL နဲ့ အစားထိုးပါ
   WEBHOOK_URL: "https://n8n.srv1695682.hstgr.cloud/webhook/webchat",
 };
@@ -319,7 +319,7 @@ function carousel(items){
     card.innerHTML = `
       <div class="card-img">
         <span class="code-tag">${it.code}</span>
-        ${it.img ? `<img src="${it.img}" alt="${it.name}">` : 'ပုံ'}
+        ${(it.image || it.img) ? `<img src="${it.image || it.img}" alt="${it.name}">` : 'ပုံ'}
       </div>
       <div class="card-body">
         <div class="card-name">${it.name}</div>
